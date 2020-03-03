@@ -26,13 +26,6 @@ type CreateRequest struct {
 	CancelURL   string            `json:"cancel_url,omitempty"`
 }
 
-// CreateResponse contains the response of the Coinbase Commerce - Create Charge API.
-type CreateResponse struct {
-	Charge   coinbasecommerce.Charge   `json:"data"`
-	Error    *coinbasecommerce.Error   `json:"error,omitempty"`
-	Warnings coinbasecommerce.Warnings `json:"warnings"`
-}
-
 const (
 	createEndpointMethod = "POST"
 	createEndpoint       = "https://api.commerce.coinbase.com/charges"
@@ -42,11 +35,12 @@ const (
 func Create(
 	apiCallContext coinbasecommerce.APICallContext,
 	request CreateRequest,
-) (CreateResponse, error) {
+) (coinbasecommerce.Charge, coinbasecommerce.Warnings, error) {
 	bodyBuffer := new(bytes.Buffer)
 	err := json.NewEncoder(bodyBuffer).Encode(request)
 	if err != nil {
-		return CreateResponse{}, err
+		return coinbasecommerce.Charge{}, nil,
+			coinbasecommerce.LocalError{Inner: err}
 	}
 
 	response, err := internal.CreateAndDoHTTPRequest(
@@ -56,10 +50,20 @@ func Create(
 		internal.CreateAndDoHTTPRequestOptionsJSONBody(bodyBuffer),
 	)
 	if err != nil {
-		return CreateResponse{}, err
+		return coinbasecommerce.Charge{}, nil,
+			coinbasecommerce.LocalError{Inner: err}
 	}
 	defer response.Body.Close()
 
-	var responseBody CreateResponse
-	return responseBody, json.NewDecoder(response.Body).Decode(&responseBody)
+	var responseBody struct {
+		Charge   coinbasecommerce.Charge    `json:"data"`
+		Error    *coinbasecommerce.APIError `json:"error,omitempty"`
+		Warnings coinbasecommerce.Warnings  `json:"warnings"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&responseBody); err != nil {
+		return coinbasecommerce.Charge{}, nil,
+			coinbasecommerce.LocalError{Inner: err}
+	}
+
+	return responseBody.Charge, responseBody.Warnings, responseBody.Error
 }

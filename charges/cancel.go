@@ -2,20 +2,11 @@ package charges
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/bmdelacruz/coinbasecommerce"
 	"github.com/bmdelacruz/coinbasecommerce/internal"
 )
-
-// CancelResponse represents the data that may be returned when a request
-// to cancel a charge object to the Coinbase Commerce API Is made.
-type CancelResponse struct {
-	Charge   coinbasecommerce.Charge   `json:"data"`
-	Error    *coinbasecommerce.Error   `json:"error,omitempty"`
-	Warnings coinbasecommerce.Warnings `json:"warnings"`
-}
 
 const (
 	cancelEndpointMethod = "POST"
@@ -26,20 +17,33 @@ const (
 func Cancel(
 	apiCallContext coinbasecommerce.APICallContext,
 	idOrCode string,
-) (CancelResponse, error) {
+) (coinbasecommerce.Charge, coinbasecommerce.Warnings, error) {
 	if idOrCode == "" {
-		return CancelResponse{}, errors.New("idOrCode cannot be empty")
+		return coinbasecommerce.Charge{}, nil,
+			coinbasecommerce.LocalError{
+				Inner: coinbasecommerce.ErrInvalidChargeIDOrCode,
+			}
 	}
+
 	response, err := internal.CreateAndDoHTTPRequest(
 		apiCallContext,
 		cancelEndpointMethod,
 		fmt.Sprintf(cancelEndpointFmt, idOrCode),
 	)
 	if err != nil {
-		return CancelResponse{}, err
+		return coinbasecommerce.Charge{}, nil,
+			coinbasecommerce.LocalError{Inner: err}
 	}
 	defer response.Body.Close()
 
-	var responseBody CancelResponse
-	return responseBody, json.NewDecoder(response.Body).Decode(&responseBody)
+	var responseBody struct {
+		Charge   coinbasecommerce.Charge    `json:"data"`
+		Error    *coinbasecommerce.APIError `json:"error,omitempty"`
+		Warnings coinbasecommerce.Warnings  `json:"warnings"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&responseBody); err != nil {
+		return coinbasecommerce.Charge{}, nil,
+			coinbasecommerce.LocalError{Inner: err}
+	}
+	return responseBody.Charge, responseBody.Warnings, responseBody.Error
 }

@@ -2,20 +2,10 @@ package charges
 
 import (
 	"encoding/json"
-	"errors"
 
 	"github.com/bmdelacruz/coinbasecommerce"
 	"github.com/bmdelacruz/coinbasecommerce/internal"
 )
-
-// GetResponse represents the data that may be returned when a
-// request to get a specific charge object to the Coinbase Commerce API
-// is made.
-type GetResponse struct {
-	Charge   coinbasecommerce.Charge   `json:"data"`
-	Error    *coinbasecommerce.Error   `json:"error,omitempty"`
-	Warnings coinbasecommerce.Warnings `json:"warnings"`
-}
 
 const (
 	getEndpointMethod = "GET"
@@ -26,20 +16,34 @@ const (
 func Get(
 	apiCallContext coinbasecommerce.APICallContext,
 	idOrCode string,
-) (GetResponse, error) {
+) (coinbasecommerce.Charge, coinbasecommerce.Warnings, error) {
 	if idOrCode == "" {
-		return GetResponse{}, errors.New("idOrCode cannot be empty")
+		return coinbasecommerce.Charge{}, nil,
+			coinbasecommerce.LocalError{
+				Inner: coinbasecommerce.ErrInvalidChargeIDOrCode,
+			}
 	}
+
 	response, err := internal.CreateAndDoHTTPRequest(
 		apiCallContext,
 		getEndpointMethod,
 		getEndpoint+idOrCode,
 	)
 	if err != nil {
-		return GetResponse{}, err
+		return coinbasecommerce.Charge{}, nil,
+			coinbasecommerce.LocalError{Inner: err}
 	}
 	defer response.Body.Close()
 
-	var responseBody GetResponse
-	return responseBody, json.NewDecoder(response.Body).Decode(&responseBody)
+	var responseBody struct {
+		Charge   coinbasecommerce.Charge    `json:"data"`
+		Error    *coinbasecommerce.APIError `json:"error,omitempty"`
+		Warnings coinbasecommerce.Warnings  `json:"warnings"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&responseBody); err != nil {
+		return coinbasecommerce.Charge{}, nil,
+			coinbasecommerce.LocalError{Inner: err}
+	}
+
+	return responseBody.Charge, responseBody.Warnings, responseBody.Error
 }

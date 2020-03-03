@@ -7,16 +7,6 @@ import (
 	"github.com/bmdelacruz/coinbasecommerce/internal"
 )
 
-// ListResponse represents the data that may be returned when a
-// request to get a list of charges to the Coinbase Commerce API
-// is made.
-type ListResponse struct {
-	Pagination coinbasecommerce.Pagination `json:"pagination"`
-	Charges    []coinbasecommerce.Charge   `json:"data"`
-	Error      *coinbasecommerce.Error     `json:"error,omitempty"`
-	Warnings   coinbasecommerce.Warnings   `json:"warnings"`
-}
-
 const (
 	listEndpointMethod = "GET"
 	listEndpoint       = "https://api.commerce.coinbase.com/charges?"
@@ -26,17 +16,34 @@ const (
 func List(
 	apiCallContext coinbasecommerce.APICallContext,
 	paginationOption coinbasecommerce.PaginationOption,
-) (ListResponse, error) {
+) (
+	[]coinbasecommerce.Charge,
+	coinbasecommerce.Pagination,
+	coinbasecommerce.Warnings,
+	error,
+) {
 	response, err := internal.CreateAndDoHTTPRequest(
 		apiCallContext,
 		listEndpointMethod,
 		listEndpoint+paginationOption.MakeQueryString(),
 	)
 	if err != nil {
-		return ListResponse{}, err
+		return nil, coinbasecommerce.Pagination{}, nil,
+			coinbasecommerce.LocalError{Inner: err}
 	}
 	defer response.Body.Close()
 
-	var responseBody ListResponse
-	return responseBody, json.NewDecoder(response.Body).Decode(&responseBody)
+	var responseBody struct {
+		Pagination coinbasecommerce.Pagination `json:"pagination"`
+		Charges    []coinbasecommerce.Charge   `json:"data"`
+		Error      *coinbasecommerce.APIError  `json:"error,omitempty"`
+		Warnings   coinbasecommerce.Warnings   `json:"warnings"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&responseBody); err != nil {
+		return nil, coinbasecommerce.Pagination{}, nil,
+			coinbasecommerce.LocalError{Inner: err}
+	}
+
+	return responseBody.Charges, responseBody.Pagination,
+		responseBody.Warnings, responseBody.Error
 }
