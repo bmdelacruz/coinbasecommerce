@@ -18,6 +18,9 @@ func (e APIError) Error() string {
 
 // Is checks if e and target are of the same type
 func (e APIError) Is(target error) bool {
+	if target == nil {
+		return false
+	}
 	t, ok := target.(*APIError)
 	return ok && t.Type == e.Type
 }
@@ -52,6 +55,9 @@ func (e LocalError) Unwrap() error {
 
 // Is checks if e and target are of the same type
 func (e LocalError) Is(target error) bool {
+	if target == nil {
+		return false
+	}
 	_, ok := target.(*LocalError)
 	return ok
 }
