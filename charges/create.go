@@ -65,5 +65,6 @@ func Create(
 			coinbasecommerce.LocalError{Inner: err}
 	}
 
-	return responseBody.Charge, responseBody.Warnings, responseBody.Error
+	return responseBody.Charge, responseBody.Warnings,
+		coinbasecommerce.ReturnAPIErrorAsError(responseBody.Error)
 }

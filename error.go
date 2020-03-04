@@ -22,6 +22,16 @@ func (e APIError) Is(target error) bool {
 	return ok && t.Type == e.Type
 }
 
+// ReturnAPIErrorAsError does what it says it does. We need to explicitly check if
+// `apiError` is not equal to nil because, unfortunately, a nil APIError pointer
+// that's returned as an error will fail nil check, i.e. `err != nil`.
+func ReturnAPIErrorAsError(apiError *APIError) error {
+	if apiError == nil {
+		return nil
+	}
+	return apiError
+}
+
 // API Errors
 var (
 	ErrAPIInvalidRequest error = &APIError{Type: "invalid_request"}

@@ -44,6 +44,6 @@ func List(
 			coinbasecommerce.LocalError{Inner: err}
 	}
 
-	return responseBody.Charges, responseBody.Pagination,
-		responseBody.Warnings, responseBody.Error
+	return responseBody.Charges, responseBody.Pagination, responseBody.Warnings,
+		coinbasecommerce.ReturnAPIErrorAsError(responseBody.Error)
 }
