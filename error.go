@@ -65,4 +65,5 @@ func (e LocalError) Is(target error) bool {
 // Local inner errors
 var (
 	ErrInvalidChargeIDOrCode = errors.New("invalid charge id or code")
+	ErrInvalidCheckoutID     = errors.New("invalid checkout id")
 )
