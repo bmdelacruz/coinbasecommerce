@@ -55,6 +55,6 @@ type Charge struct {
 	Timeline    []ChargeStatusUpdate `json:"timeline"`
 	Metadata    map[string]string    `json:"metadata"`
 	PricingType PricingType          `json:"pricing_type"`
-	Pricing     map[string]string    `json:"pricing"`
+	Pricing     map[string]Money     `json:"pricing"`
 	Payments    []interface{}        `json:"payments"`
 }
